@@ -23,7 +23,7 @@ def traverse_daods():
   n_bins_phi = int((phi_range[1]-phi_range[0])/phi_block_size)
 
   gROOT.ProcessLine (".x $ROOTCOREDIR/scripts/load_packages.C");
-
+  gROOT.ProcessLine('#include "xAODTruth/xAODTruthHelpers.h"');
   # Set up the input files:
   #tt 400 example
   #fileName = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
@@ -41,30 +41,49 @@ def traverse_daods():
 
   # #print( "Number of input events: %s" % t.GetEntries() )
 
-  for entry in xrange(1):#t.GetEntries()): 
+  for entry in xrange(3):#t.GetEntries()): 
     x=[]
     t.GetEntry(entry)
     print( "Processing run #%i, event #%i" % ( t.EventInfo.runNumber(), t.EventInfo.eventNumber() ) )
     print( "Number of jets: %i" %  t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size() )
-    for i in xrange(1):#t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size()):
+    for i in xrange(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size()):
       j = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i)
+      #print(j.truthOrigin())
       print("Jet"+str(i))
       print("Jet Pt = %g, Jet Eta = %g, Jet Phi = %g" % (j.pt(),j.eta(),j.phi()))
       constituents = j.getConstituents()
-      for index in xrange(constituents.size()):
-        constit = constituents[index]
-        print( "pt = %g, eta = %g, phi = %g" % (constit.pt(), constit.eta(), constit.phi()))
-        x.append([constit.eta()-j.eta(), constit.phi()-j.phi(),constit.pt()])
-      x = j.getAssociatedObject() 
-      print(x)
+      #pprint(dir(j))
+      #truth = j.getAssociatedObjects('Truth') 
+      truth = ROOT.xAOD.TruthHelpers.getTruthParticle(j)
+      print(truth)
+      #pprint(dir(truth))
+      #print(truth.barcode())
+      #print(truth.isTop())
+      #print("size truth:"+str(len(truth)))
+
+      # print(truth.data())
+      # for i in xrange(truth.size()):
+      #   print(truth[i])
+
+      if(constituents.isValid()):
+        for index in xrange(constituents.size()):
+          constit = constituents[index]
+          print( "pt = %g, eta = %g, phi = %g" % (constit.pt(), constit.eta(), constit.phi()))
+          x.append([constit.eta()-j.eta(), constit.phi()-j.phi(),constit.pt()])
+        #y = j.getAssociatedObjects('PartonTruthLabelID')
+        #y = j.getAttribute('constituentWeights') # this works!!!
+        #for i in xrange(len(y)):
+        #  print y[i]
+        #z = j.getAttribute('PartonTruthLabelID') # does not work 
+        #z = j.getAssociatedObject('PartonTruthLabelID') # does not work
+        #z = j.getAssociatedObjects('PartonTruthLabelID') # goes not work either
+        
       #pprint(dir(j))  
-      
       #print(x)
       #x = np.array(x)
-      
-      f_out.Write()
-      f_out.Close()
-      f.Close()  
+  f_out.Write()
+  f_out.Close()
+  f.Close()  
   ROOT.xAOD.ClearTransientTrees() 
     # for c in j.getConstituents():
     #   print(c.pt() , c.eta())
