@@ -1,0 +1,14 @@
+#!/bin/sh
+#PBS -N z_test
+#PBS -l mem=4gb
+#PBS -l procs=1
+#PBS -j oe
+#PBS -r n
+#PBS -V
+ 
+cd ~/top_tagging/xAOD_traversal
+echo "Current working directory is `pwd`" 
+echo "Starting run at: `date`"
+python extract_info.py $input1 
+
+
