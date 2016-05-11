@@ -1,19 +1,28 @@
 import ROOT
-from ROOT import TCanvas, TF1
+from ROOT import TCanvas, TF1, TMultiGraph
 
 c1 = TCanvas( 'c1', 'Example with Formula', 200, 10, 700, 500 )
+
 
 # Create a one dimensional function and draw it
 f = ROOT.TFile.Open("outputs/zprime5000_000005delta_r.root")
 f.ls()
-#for entry in t.GetEntries())
-t = f.Get("h_delta_r_top_W")
-t.SetLineColor(ROOT.kRed)
-t.SetName("test")
-t.Draw()#"uniform")
-#fun1 = TF1( 'fun1', 'abs(sin(x)/x)', 0, 10 )
-#c1.SetGrid()
-#fun1.Draw()
+# for entry in ["delta_r","h_delta_r_top_W","h_delta_r_top_b"]:
+#    t = f.Get(entry)#"h_delta_r_top_W")
+#    t.SetLineColor(ROOT.kRed)
+#    t.SetName("entry")
+#    t.Draw(entry)#"uniform")
+t1 = f.Get("delta_r")#"h_delta_r_top_W")
+t1.SetLineColor(ROOT.kRed)
+t1.SetName("delta_r")
+t1.Draw()
+c1.Update()
+t2 = f.Get("h_delta_r_top_W")#"h_delta_r_top_W")
+t2.SetLineColor(ROOT.kRed)
+t2.SetName("delta_r_top_W")
+t2.Draw("SAME")#"same")#"uniform")
+
+
 c1.BuildLegend(0.55,0.32,0.88,0.12,"Legend Name")
 c1.Print("hello.pdf")
 '''
