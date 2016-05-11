@@ -11,8 +11,8 @@ from ROOT import gROOT
 import re
 import sys
 import logging as l
-
-
+import pdg_dictionary
+from pdg_dictionary import pdgid_to_name
 
 def traverse_daods(file_name):
     # Constants
@@ -58,12 +58,50 @@ def traverse_daods(file_name):
       return delta_r
 
     def delta_r_match(eta_1,phi_1,eta_2,phi_2, delta_r_max):
-      calculate_delta_r(eta_1,phi_1,eta_2,phi_2)
+      delta_r = calculate_delta_r(eta_1,phi_1,eta_2,phi_2)
       if(delta_r<delta_r_max):
         return True
       else:
         return False 
+
+    def get_w(truth):
+        W = None
+        b = None
+        l_truth.debug("Number of children: "+str(truth.nChildren()))
+        for i in xrange(truth.nChildren()):
+            l_truth.debug("----"+str(pdgid_to_name(truth.child(i).pdgId())))
+            if(truth.child(i).isTop()):
+                get_w(truth.child(i)) # iterate recursively
+            if(truth.child(i).pdgId() == 24):
+                l_truth.debug("W filled")
+                W = truth.child(i)   
+            if(truth.child(i).pdgId() == 5):
+                l_truth.debug("b filled")
+                b = truth.child(i)
+        if(W and b):
+            return W,b
+        return None, None
+
+    def get_w_minus(truth):
+        W = None
+        b = None
+        l_truth.debug("Number of children: "+str(truth.nChildren()))
+        for i in xrange(truth.nChildren()):
+            l_truth.debug("----"+str(pdgid_to_name(truth.child(i).pdgId())))
+            if(truth.child(i).isTop()):
+                get_w(truth.child(i)) # iterate recursively
+            if(truth.child(i).pdgId() == -24):
+                l_truth.debug("W filled")
+                W = truth.child(i)   
+            if(truth.child(i).pdgId() == -5):
+                l_truth.debug("b filled")
+                b = truth.child(i)
+        if(W and b):
+            return W,b
+        return None, None
+
     '''
+    # Incorrect
     def calculate_opening_angle(px_1,py_1,pz_1,px_2,py_2,pz_2):
       p_dot = px_1*px_2+py_1*py_2+pz_1*pz_2
       p_mag = math.sqrt((px_1**2+py_1**2+pz_1**2)*(px_2**2+py_2**2+pz_2**2))
@@ -84,22 +122,21 @@ def traverse_daods(file_name):
       l_truth.debug("Opening angle: "+str(theta))
       return theta
 
-    gROOT.ProcessLine (".x $ROOTCOREDIR/scripts/load_packages.C");  
-    # Set up the input files:
-    #tt 400 example
-    #file_name = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
-    #output_file_name = "zprime400_tt"
-    # tt 5000
-    #file_name = "/data/wfedorko/mc15_13TeV.301335.Pythia8EvtGen_A14NNPDF23LO_zprime5000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618499_00/DAOD_EXOT7.07618499._000005.pool.root.1"
-    output_file_name = parse_file_name(file_name)
-    # dijet 
-    #file_name = "/data/wfedorko/mc15_13TeV.361022.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2W.merge.DAOD_EXOT7.e3668_s2576_s2132_r7267_r6282_p2495_tid07618436_00/DAOD_EXOT7.07618436._000001.pool.root.1"
-    #output_file_name = "dijet"
+    def calculate_delta_r_from_particle(W,truth):
+        delta_eta = W.eta()-truth.eta()
+        delta_phi = W.phi()-truth.phi()
+        delta_r = math.sqrt(delta_eta**2+delta_phi**2)
+        #l_jet.debug("delta_eta: "+str(delta_eta))
+        #l_jet.debug("delta_phi: "+str(delta_phi))
+        #l_truth.debug("Delta R: "+str(delta_r))
+        #print("Delta R: "+str(delta_r))
+        return delta_r
 
+    gROOT.ProcessLine (".x $ROOTCOREDIR/scripts/load_packages.C");  
+    output_file_name = parse_file_name(file_name)
     treeName = "CollectionTree" # default when making transient tree anyway
     f = ROOT.TFile.Open(file_name)
     t = ROOT.xAOD.MakeTransientTree(f, treeName)    
-    # Setup the output file
     f_out = ROOT.TFile(output_file_name, "recreate")   
 
     # Set up histograms if desired
@@ -196,56 +233,76 @@ def traverse_daods(file_name):
       h_calo_towers.GetYaxis().SetTitle(" Eta   ")
       h_calo_towers.GetZaxis().SetTitle(" pt [MeV]  ")
 
-    h_opening_angle = ROOT.TH1F('opening_angle','Opening angle between truth top quarks',40,0,math.pi)
-    h_opening_angle.GetXaxis().SetTitle("Phi [rad]") 
+    #h_opening_angle = ROOT.TH1F('opening_angle','Opening angle between truth top quarks',40,0,math.pi)
+    #h_opening_angle.GetXaxis().SetTitle("Phi [rad]") 
 
     h_delta_r = ROOT.TH1F('delta_r','Delta R between truth top quarks',30,0,2*math.pi)
     h_delta_r.GetXaxis().SetTitle("Delta R") 
 
-    h_opening_angle_topos = ROOT.TH1F('opening_angle_topos','Opening angle between constituent 1 and 2 for top jets',40,0,math.pi)
-    h_opening_angle_topos.GetXaxis().SetTitle("Phi [rad]") 
+    #h_opening_angle_topos = ROOT.TH1F('opening_angle_topos','Opening angle between constituent 1 and 2 for top jets',40,0,math.pi)
+    #h_opening_angle_topos.GetXaxis().SetTitle("Phi [rad]") 
+   
+    h_delta_r_top_W = ROOT.TH1F('h_delta_r_top_W','Delta R between Top and W',40,0,10)#math.pi)
+    h_delta_r_top_W.GetXaxis().SetTitle("$\Delta R$") 
 
+    h_delta_r_top_b = ROOT.TH1F('h_delta_r_top_b','Delta R between Top and b',40,0,10)#math.pi)
+    h_delta_r_top_b.GetXaxis().SetTitle("$\Delta$ R") 
 
     l.info( "Number of input events: %s" % t.GetEntries())
     
     # Loop over all events
-    for entry in xrange(5000):#t.GetEntries()): 
+    for entry in xrange(4000):#t.GetEntries()): 
       t.GetEntry(entry)
       l.debug( " ################ Run #%i, Event #%i ###########################" % ( t.EventInfo.runNumber(), t.EventInfo.eventNumber() ) )
       l.debug( "Number of jets: %i" %  t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size() )
       if(entry % 1000 == 0 and entry != 0):
-        l.info(entry)
+        l.info("Processing event: "+str(entry))
       # Loop over truth particles 
       l_truth.debug("Number of truth particles:"+str(t.TruthParticles.size()))
       top = 0
       for i in xrange(t.TruthParticles.size()):   
-          #if(i % 1000 == 0 and i != 0):
-          #  print(i)
           truth =  t.TruthParticles.at(i)
-          #print("PdgID truth:"+str(truth.pdgId()))
+          # print("PdgID truth:"+str(truth.pdgId()))
           if(truth.pdgId() == 6):
             truth_top_pt, truth_top_eta, truth_top_phi  = truth.pt(), truth.eta(), truth.phi()
             truth_top_p = np.array([truth.px(), truth.py(), truth.pz()])
             l_truth.debug("Top")
             l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
-            print(truth.child().child().pdgId())
-
-            top += 1
-
+            l_truth.debug("Is top? "+str(truth.isTop()))
+            W = None 
+            b = None
+            if(truth.isTop()):
+              W,b = get_w(truth)
+              if(W and b):
+                delta_r_W_top = calculate_delta_r_from_particle(W,truth)
+                h_delta_r_top_W.Fill(delta_r_W_top)
+                delta_r_b_top = calculate_delta_r_from_particle(W,b)
+                h_delta_r_top_b.Fill(delta_r_b_top)
+          
           if(truth.pdgId() == -6):
             truth_anti_top_pt, truth_anti_top_eta, truth_anti_top_phi  = truth.pt(), truth.eta(), truth.phi()
             truth_anti_top_p = np.array([truth.px(), truth.py(), truth.pz()])
             l_truth.debug("Anti-top")
+            l_truth.debug("Is anti-top?"+str(truth.isTop()))
             l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
+            l_truth.debug("Is top? "+str(truth.isTop()))
+            W = None 
+            b = None
+            if(truth.isTop()):
+              W,b = get_w_minus(truth)
+              if(W and b):
+                delta_r_W_top = calculate_delta_r_from_particle(W,truth)
+                h_delta_r_top_W.Fill(delta_r_W_top)
+                delta_r_b_top = calculate_delta_r_from_particle(W,b)
+                h_delta_r_top_b.Fill(delta_r_b_top)
+            #for i in xrange(truth.nChildren()):
+            #      l_truth.debug(truth.child(i).pdgId())
             top += 1
-      
+            
       #theta = calculate_opening_angle(truth_top_px, truth_top_py, truth_top_pz,truth_anti_top_px, truth_anti_top_py, truth_anti_top_pz)
       if(top>=2):
-        theta = calculate_opening_angle(truth_top_p, truth_anti_top_p)
-        h_opening_angle.Fill(theta)
         delta_r = calculate_delta_r(truth_top_eta, truth_top_phi, truth_anti_top_eta, truth_anti_top_phi)
         h_delta_r.Fill(delta_r)
-
 
       #for i in xrange(t.AntiKt10TruthJets.size()):
       #    truth_jet = t.AntiKt10TruthJets.at(i)
@@ -328,12 +385,7 @@ def traverse_daods(file_name):
                           h_topo_frac_i[index].Fill(topo.pt()/jet_pt_from_topos) 
                           h_topo_pt_i[index].Fill(topo.pt()/GeV)
                           h_topo_eta_i[index].Fill(topo.eta())  
-                          h_topo_phi_i[index].Fill(topo.phi())
-              if(len(topos)>=2) and (matches_top or matches_anti_top):
-                print("calculating theta2")
-                theta2 = calculate_opening_angle(topo_p_0, topo_p_1)
-                h_opening_angle_topos.Fill(theta2)
-  
+                          h_topo_phi_i[index].Fill(topo.phi())         
 
               l_jet_sub.debug("Jet_pt from Jet   = %g" % jet.pt())
               l_jet_sub.debug("Jet_pt from Topos = %g" % jet_pt_from_topos)
@@ -362,19 +414,19 @@ if __name__ == '__main__':
     l_jet_sub.setLevel(l.ERROR)
     #l_jet_sub.setLevel(l.DEBUG)
     l_truth = l.getLogger("truth logger")
-    #l_truth.setLevel(l.ERROR)
-    l_truth.setLevel(l.DEBUG)
+    l_truth.setLevel(l.ERROR)
+    #l_truth.setLevel(l.DEBUG)
 
     # read in filename as input
     if len(sys.argv)>=2:
       name,file_name = sys.argv
     else:
       # zprime tt 400
-      #file_name = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
+      file_name = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
       # zprime tt 2250
       #file_name = "/data/wfedorko/mc15_13TeV.301330.Pythia8EvtGen_A14NNPDF23LO_zprime2250_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07618509_00/DAOD_EXOT7.07618509._000010.pool.root.1"
       # zprime tt 5000
-      file_name = "/data/wfedorko/mc15_13TeV.301335.Pythia8EvtGen_A14NNPDF23LO_zprime5000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618499_00/DAOD_EXOT7.07618499._000005.pool.root.1"
+      #file_name = "/data/wfedorko/mc15_13TeV.301335.Pythia8EvtGen_A14NNPDF23LO_zprime5000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618499_00/DAOD_EXOT7.07618499._000005.pool.root.1"
       # dijet 
       #file_name = "/data/wfedorko/mc15_13TeV.361022.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2W.merge.DAOD_EXOT7.e3668_s2576_s2132_r7267_r6282_p2495_tid07618436_00/DAOD_EXOT7.07618436._000001.pool.root.1"
     l.info("Input file: "+file_name)
