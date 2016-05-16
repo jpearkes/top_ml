@@ -37,7 +37,7 @@ def traverse_daods(file_name):
          output_file_name = "dijet"+jzxw.group(1)
       elif(zprimexxx):
          output_file_name = zprimexxx.group(1)
-      output_file_name = "outputs/"+output_file_name+"_"+daod_num.group(1)+"delta_r.root"
+      output_file_name = "outputs/"+output_file_name+"_"+daod_num.group(1)+"z_prime.root"
 
       l.info("Output file:"+output_file_name)
       return output_file_name
@@ -49,6 +49,10 @@ def traverse_daods(file_name):
       return topo_list
 
     def calculate_delta_r(eta_1,phi_1,eta_2,phi_2):
+      if(phi_1>=math.pi and phi_1<2*math.pi):
+        phi_1 = phi_1-2*math.pi
+      if(phi_2>=math.pi and phi_2<2*math.pi):
+        phi_2 = phi_2-2*math.pi
       delta_eta = eta_1-eta_2
       delta_phi = phi_1-phi_2
       delta_r = math.sqrt(delta_eta**2+delta_phi**2)
@@ -57,8 +61,8 @@ def traverse_daods(file_name):
       #l_jet.debug("Delta R: "+str(delta_r))
       return delta_r
 
-    def delta_r_match(eta_1,phi_1,eta_2,phi_2, delta_r_max):
-      delta_r = calculate_delta_r(eta_1,phi_1,eta_2,phi_2)
+    def delta_r_match(p4_1, p4_2, delta_r_max):
+      delta_r = p4_1.DeltaR(p4_2)
       if(delta_r<delta_r_max):
         return True
       else:
@@ -100,19 +104,14 @@ def traverse_daods(file_name):
             return W,b
         return None, None
 
-    '''
-    # Incorrect
-    def calculate_opening_angle(px_1,py_1,pz_1,px_2,py_2,pz_2):
-      p_dot = px_1*px_2+py_1*py_2+pz_1*pz_2
-      p_mag = math.sqrt((px_1**2+py_1**2+pz_1**2)*(px_2**2+py_2**2+pz_2**2))
-      
-      l_truth.debug("p_dot: "+str(p_dot))
-      l_truth.debug("p_mag: "+str(p_mag))
-      l_truth.debug("cos theta :"+str(p_dot/p_mag))
-      theta = math.acos(p_dot/p_mag)
-      l_truth.debug("Opening angle: "+str(theta))
-      return theta
-    '''
+    def get_z(truth):
+        z = truth
+        for i in xrange(truth.nChildren()):
+            l_truth.debug("----"+str(pdgid_to_name(truth.child(i).pdgId())))
+            if(truth.child(i) == 32):
+                z = get_z(truth.child(i)) # iterate recursively
+        return z
+
 
     def calculate_opening_angle(p_1,p_2):
       # print(np.dot(p_1,p_2))
@@ -123,9 +122,18 @@ def traverse_daods(file_name):
       return theta
 
     def calculate_delta_r_from_particle(W,truth):
+        '''
+        W_phi = W.phi()
+        truth_phi = truth.phi()
+        if(W.phi()>=math.pi and W.phi()<2*math.pi):
+          W_phi = W.phi()-2*math.pi
+        if(truth.phi()>=math.pi and truth.phi()<2*math.pi):
+          truth_phi = truth.phi()-2*math.pi
         delta_eta = W.eta()-truth.eta()
-        delta_phi = W.phi()-truth.phi()
+        delta_phi = W_phi-truth_phi
         delta_r = math.sqrt(delta_eta**2+delta_phi**2)
+        '''
+        delta_r = W.p4().DeltaR(truth.p4())
         #l_jet.debug("delta_eta: "+str(delta_eta))
         #l_jet.debug("delta_phi: "+str(delta_phi))
         #l_truth.debug("Delta R: "+str(delta_r))
@@ -141,13 +149,16 @@ def traverse_daods(file_name):
 
     # Set up histograms if desired
     fill_histograms = 0
+
+    eta_range = (-3, 3) 
+    phi_range = (-math.pi, math.pi)
+    eta_block_size = 0.1
+    phi_block_size = 0.1
+    n_bins_eta = int((eta_range[1]-eta_range[0])/eta_block_size)
+    n_bins_phi = int((phi_range[1]-phi_range[0])/phi_block_size) 
+
     if(fill_histograms):
-      eta_range = (-3, 3) 
-      phi_range = (-math.pi, math.pi)
-      eta_block_size = 0.1
-      phi_block_size = 0.1
-      n_bins_eta = int((eta_range[1]-eta_range[0])/eta_block_size)
-      n_bins_phi = int((phi_range[1]-phi_range[0])/phi_block_size)  
+ 
 
       h_num_jets = ROOT.TH1F('num_jets','Number of jets per event',30,0.0,30.0)
       h_num_jets.GetXaxis().SetTitle("Number of jets") 
@@ -233,20 +244,25 @@ def traverse_daods(file_name):
       h_calo_towers.GetYaxis().SetTitle(" Eta   ")
       h_calo_towers.GetZaxis().SetTitle(" pt [MeV]  ")
 
-    #h_opening_angle = ROOT.TH1F('opening_angle','Opening angle between truth top quarks',40,0,math.pi)
-    #h_opening_angle.GetXaxis().SetTitle("Phi [rad]") 
 
     h_delta_r = ROOT.TH1F('delta_r','Delta R between truth top quarks',30,0,2*math.pi)
     h_delta_r.GetXaxis().SetTitle("Delta R") 
 
-    #h_opening_angle_topos = ROOT.TH1F('opening_angle_topos','Opening angle between constituent 1 and 2 for top jets',40,0,math.pi)
-    #h_opening_angle_topos.GetXaxis().SetTitle("Phi [rad]") 
    
     h_delta_r_top_W = ROOT.TH1F('h_delta_r_top_W','Delta R between Top and W',40,0,10)#math.pi)
     h_delta_r_top_W.GetXaxis().SetTitle("$\Delta R$") 
 
     h_delta_r_top_b = ROOT.TH1F('h_delta_r_top_b','Delta R between Top and b',40,0,10)#math.pi)
     h_delta_r_top_b.GetXaxis().SetTitle("$\Delta$ R") 
+
+    h_z_prime_pt = ROOT.TH1F('h_z_prime_pt','Pt of Z prime',100,0.0,5.0e3)
+    h_z_prime_pt.GetXaxis().SetTitle("Pt") 
+
+    h_z_prime_eta = ROOT.TH1F('h_z_prime_eta','Eta distribution of Z prime',n_bins_eta,eta_range[0],eta_range[1])
+    h_z_prime_eta.GetXaxis().SetTitle("Eta")  
+
+    h_z_prime_phi = ROOT.TH1F('h_z_prime_phi','Phi distribution of Z prime',n_bins_phi,phi_range[0],phi_range[1])
+    h_z_prime_phi.GetXaxis().SetTitle("Phi [rad]") 
 
     l.info( "Number of input events: %s" % t.GetEntries())
     
@@ -259,50 +275,64 @@ def traverse_daods(file_name):
         l.info("Processing event: "+str(entry))
       # Loop over truth particles 
       l_truth.debug("Number of truth particles:"+str(t.TruthParticles.size()))
-      top = 0
+      z = None
+      top = None
+      anti_top = None
       for i in xrange(t.TruthParticles.size()):   
           truth =  t.TruthParticles.at(i)
           # print("PdgID truth:"+str(truth.pdgId()))
-          if(truth.pdgId() == 6):
-            truth_top_pt, truth_top_eta, truth_top_phi  = truth.pt(), truth.eta(), truth.phi()
-            truth_top_p = np.array([truth.px(), truth.py(), truth.pz()])
-            l_truth.debug("Top")
-            l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
-            l_truth.debug("Is top? "+str(truth.isTop()))
-            W = None 
-            b = None
-            if(truth.isTop()):
-              W,b = get_w(truth)
-              if(W and b):
-                delta_r_W_top = calculate_delta_r_from_particle(W,truth)
-                h_delta_r_top_W.Fill(delta_r_W_top)
-                delta_r_b_top = calculate_delta_r_from_particle(W,b)
-                h_delta_r_top_b.Fill(delta_r_b_top)
-          
-          if(truth.pdgId() == -6):
-            truth_anti_top_pt, truth_anti_top_eta, truth_anti_top_phi  = truth.pt(), truth.eta(), truth.phi()
-            truth_anti_top_p = np.array([truth.px(), truth.py(), truth.pz()])
-            l_truth.debug("Anti-top")
-            l_truth.debug("Is anti-top?"+str(truth.isTop()))
-            l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
-            l_truth.debug("Is top? "+str(truth.isTop()))
-            W = None 
-            b = None
-            if(truth.isTop()):
-              W,b = get_w_minus(truth)
-              if(W and b):
-                delta_r_W_top = calculate_delta_r_from_particle(W,truth)
-                h_delta_r_top_W.Fill(delta_r_W_top)
-                delta_r_b_top = calculate_delta_r_from_particle(W,b)
-                h_delta_r_top_b.Fill(delta_r_b_top)
-            #for i in xrange(truth.nChildren()):
-            #      l_truth.debug(truth.child(i).pdgId())
-            top += 1
+          if(truth.pdgId() == 32): # Z' 
+            z = truth
+
+          if(fill_histograms):
+            if(truth.pdgId() == 6):
+              #truth_top_pt, truth_top_eta, truth_top_phi  = truth.pt(), truth.eta(), truth.phi()
+              #truth_top_p = np.array([truth.px(), truth.py(), truth.pz()])
+              truth_top_p4 = truth.p4()
+              l_truth.debug("Top")
+              l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
+              l_truth.debug("Is top? "+str(truth.isTop()))
+              W = None 
+              b = None
+              if(truth.isTop()):
+                W,b = get_w(truth)
+                if(W and b):
+                  delta_r_W_top = calculate_delta_r_from_particle(W,truth)
+                  h_delta_r_top_W.Fill(delta_r_W_top)
+                  delta_r_b_top = calculate_delta_r_from_particle(W,b)
+                  h_delta_r_top_b.Fill(delta_r_b_top)
+            
+            if(truth.pdgId() == -6):
+              #truth_anti_top_pt, truth_anti_top_eta, truth_anti_top_phi  = truth.pt(), truth.eta(), truth.phi()
+              #truth_anti_top_p = np.array([truth.px(), truth.py(), truth.pz()])
+              truth_anti_top_p4 = truth.p4()
+              l_truth.debug("Anti-top")
+              l_truth.debug("Is anti-top?"+str(truth.isTop()))
+              l_truth.debug("pt = %g, eta = %g, phi = %g" % (truth.pt(), truth.eta(), truth.phi()))
+              l_truth.debug("Is top? "+str(truth.isTop()))
+              W = None 
+              b = None
+              if(truth.isTop()):
+                W,b = get_w_minus(truth)
+                if(W and b):
+                  delta_r_W_top = calculate_delta_r_from_particle(W,truth)
+                  h_delta_r_top_W.Fill(delta_r_W_top)
+                  delta_r_b_top = calculate_delta_r_from_particle(W,b)
+                  h_delta_r_top_b.Fill(delta_r_b_top)
+              #for i in xrange(truth.nChildren()):
+              #      l_truth.debug(truth.child(i).pdgId())
+              top += 1
             
       #theta = calculate_opening_angle(truth_top_px, truth_top_py, truth_top_pz,truth_anti_top_px, truth_anti_top_py, truth_anti_top_pz)
       if(top>=2):
-        delta_r = calculate_delta_r(truth_top_eta, truth_top_phi, truth_anti_top_eta, truth_anti_top_phi)
+        delta_r = truth_anti_top_p4.DeltaR(truth_top_p4)
         h_delta_r.Fill(delta_r)
+      
+      if(z):
+          l_truth.debug("Z': pt = %g, eta = %g, phi = %g" % (z.pt(), z.eta(), z.phi()))
+          h_z_prime_pt.Fill(z.pt()) 
+          h_z_prime_eta.Fill(z.eta())
+          h_z_prime_phi.Fill(z.phi())
 
       #for i in xrange(t.AntiKt10TruthJets.size()):
       #    truth_jet = t.AntiKt10TruthJets.at(i)
@@ -326,7 +356,7 @@ def traverse_daods(file_name):
           jet = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i) # Jet
           
 
-
+        if(fill_histograms):
           if(fill_histograms):
             if (i<=5):
                 h_jet_frac_i[i].Fill(jet.pt()/total_jet_pt) 
@@ -340,12 +370,12 @@ def traverse_daods(file_name):
           l_jet.info("Jet "+str(i)+"-------------------------------------")
           l_jet.info("pt = %g, eta = %g, phi = %g" % (jet.pt(),jet.eta(),jet.phi())) 
           matches_top = False
-          matches_top = delta_r_match(truth_top_eta, truth_top_phi, jet.eta(),jet.phi(), 0.4)
+          matches_top = delta_r_match(truth_top_p4, jet.p4(), 0.4)
           if (matches_top):
             l_jet.debug("Jet "+str(i)+" matches top")
 
           matches_anti_top = False
-          matches_anti_top = delta_r_match(truth_anti_top_eta, truth_anti_top_phi, jet.eta(),jet.phi(), 0.4)
+          matches_anti_top = delta_r_match(truth_anti_top_p4, jet.p4(), 0.4)
           if(matches_anti_top):
             l_jet.debug("Jet "+str(i)+" matches anti-top")
 
@@ -370,11 +400,10 @@ def traverse_daods(file_name):
               for index in xrange(len(topos)):
                     topo = topos[index]# #topos[index] topos.at(index)#
                     l_jet_sub.info( "Constit:     pt = %g, eta = %g, phi = %g" % (topo.pt(), topo.eta(), topo.phi()))
-                    #l_jet_sub.debug(pprint.pformat(dir(topo)))
-                    #raw_cluster = topo.rawConstituent()
-                    #print( "Raw Cluster: pt = %g, eta = %g, phi = %g" % (raw_cluster.pt(), raw_cluster.eta(), raw_cluster.phi()))    
-                    #l = dir(raw_cluster)
-                    #pprint(l)
+                    l_jet_sub.debug(dir(topo))
+                    raw_cluster = topo.rawConstituent()
+                    l_jet_sub.debug( "Raw Cluster: pt = %g, eta = %g, phi = %g" % (raw_cluster.pt(), raw_cluster.eta(), raw_cluster.phi()))    
+                    l_jet_sub.debug(dir(raw_cluster))
                     if(fill_histograms):
                       h_calo_towers.Fill(topo.eta()-jet.eta(), topo.phi()-jet.phi(),topo.pt())# for i in xrange(5)] # before transformations
                       h_topo_pt.Fill(topo.pt()) 
@@ -422,9 +451,17 @@ if __name__ == '__main__':
       name,file_name = sys.argv
     else:
       # zprime tt 400
-      file_name = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
+      #file_name = "/data/wfedorko/mc15_13TeV.301322.Pythia8EvtGen_A14NNPDF23LO_zprime400_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07896478_00/DAOD_EXOT7.07896478._000001.pool.root.1"
+      # zprime tt 1000
+      #file_name = "/data/wfedorko/mc15_13TeV.301325.Pythia8EvtGen_A14NNPDF23LO_zprime1000_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07618490_00/DAOD_EXOT7.07618490._000001.pool.root.1"
+      # zprime tt 2000
+      #file_name = "/data/wfedorko/mc15_13TeV.301329.Pythia8EvtGen_A14NNPDF23LO_zprime2000_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07618440_00/DAOD_EXOT7.07618440._000001.pool.root.1"
       # zprime tt 2250
       #file_name = "/data/wfedorko/mc15_13TeV.301330.Pythia8EvtGen_A14NNPDF23LO_zprime2250_tt.merge.DAOD_EXOT7.e4061_s2608_s2183_r7326_r6282_p2495_tid07618509_00/DAOD_EXOT7.07618509._000010.pool.root.1"
+      # zprime tt 3000
+      #file_name = "/data/wfedorko/mc15_13TeV.301333.Pythia8EvtGen_A14NNPDF23LO_zprime3000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618517_00/DAOD_EXOT7.07618517._000001.pool.root.1"
+      # zprime tt 4000
+      file_name = "/data/wfedorko/mc15_13TeV.301334.Pythia8EvtGen_A14NNPDF23LO_zprime4000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618446_00/DAOD_EXOT7.07618446._000001.pool.root.1"
       # zprime tt 5000
       #file_name = "/data/wfedorko/mc15_13TeV.301335.Pythia8EvtGen_A14NNPDF23LO_zprime5000_tt.merge.DAOD_EXOT7.e3723_s2608_s2183_r7326_r6282_p2495_tid07618499_00/DAOD_EXOT7.07618499._000005.pool.root.1"
       # dijet 
