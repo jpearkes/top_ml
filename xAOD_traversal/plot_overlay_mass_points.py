@@ -1,7 +1,8 @@
 import ROOT
 from ROOT import TCanvas, TF1, TLegend
 import glob, re
-import logging as l
+import logging as l 
+from pprint import pprint
 
 def plot_histograms():
 
@@ -22,17 +23,20 @@ def plot_histograms():
       l.debug("Energies: "+str(energies))
       return energies
    
-   Files = glob.glob("outputs/zprime*000_*delta_r.root")
+   Files = glob.glob("outputs/zprime*_000000*z_prime.root")
    energies = parse_file_names(Files)
-   colours = [ROOT.kBlack,ROOT.kBlue, ROOT.kViolet, ROOT.kGreen, ROOT.kRed, ROOT.kOrange]
-   print(colours)
-   yx = zip(energies, Files, colours)
+   Colours = [ROOT.kBlack,ROOT.kBlue, ROOT.kViolet, ROOT.kGreen, ROOT.kRed, ROOT.kOrange]
+   print(Colours)
+   yx = zip(energies, Files)
    yx.sort()
-   print(yx)
-   files = [x for y, x, z in yx]
-   colours = [z for y, x, z in yx]
+   pprint(yx)
+   yz = zip(energies, Colours)
+   yz.sort()
+   pprint(yz)
+   files = [y for x, y in yx]
+   colours = [y for x, y in yz]
    print(files)
-   energies.sort()
+   #energies.sort()
    print(energies)
    print(colours)
    #[files for (energies,files) in sorted(zip(Energies,Files),key=lambda pair: pair[0])]
@@ -40,37 +44,39 @@ def plot_histograms():
    #files = ["outputs/zprime5000_000005delta_r.root","outputs/zprime2250_000010delta_r.root"]#glob.glob("outputs/zprime*delta_r.root")
    #energies = ["5000","2250"]
    
-   entries = ["delta_r", "h_delta_r_top_W", "h_delta_r_top_b"]
+   entries = ["delta_r", "h_delta_r_top_W", "h_delta_r_top_b","h_z_prime_pt","h_z_prime_eta","h_z_prime_phi", "delta_r_top_jet"]
    l.debug("Files: "+str(files))
    l.debug("Files length: "+str(len(files)))
    
    t = [None]*len(files)
    f = [None]*len(files)
    c = [None]*len(entries)
-
+   ROOT.gStyle.SetOptStat(0);
    for j in xrange(len(entries)):
       c[j] = TCanvas( 'c'+str(j), entries[j], 200, 10, 700, 500)
-      leg = TLegend(0.1,0.7,0.48,0.9)
+      leg = TLegend(0.7,0.15,0.85,0.35)
+      leg.SetBorderSize(0)
       leg.SetHeader("Z' Mass [GeV]");
       #c[j].SetLogy();
-      for i in xrange(len(files)):
+      for i in reversed(xrange(len(files))):
          l.debug("File name:"+files[i])
+         l.debug("Energy:"+energies[i])
          l.debug("Entry:"+entries[j])
+         l.debug("colours:"+str(colours[i]))
          f[i] = ROOT.TFile.Open(files[i])
          t[i] = f[i].Get(entries[j])
          t[i].SetLineColor(colours[i])
          t[i].SetLineWidth(2);
          t[i].SetName(energies[i])
          leg.AddEntry(t[i],energies[i],"l");
-         if (i==0):
-            l.debug("i == 0")
+         if (i==len(files)):
             t[i].Draw()
             c[j].Update()
          else:
-            l.debug("i != 0")
             t[i].Draw("SAME") #this is required to draw on same canvas
             c[j].Update()
       leg.Draw()
+      c[j].Print("overlay_"+entries[j]+".root")
       c[j].Print("overlay_"+entries[j]+".png")
    #ATLASLabel(0.13,0.85,"Work in Progress",1);      
 
