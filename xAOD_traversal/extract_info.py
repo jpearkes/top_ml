@@ -107,6 +107,10 @@ def traverse_daods(file_name):
         string = pdgid_to_name(truth.pdgId())+(": pt = %g, eta = %g, phi = %g" % (top.pt(), top.eta(), top.phi()))
         return string
 
+    def debug_string(truth):       
+        string = ": pt = %g, eta = %g, phi = %g" % (top.pt(), top.eta(), top.phi())
+        return string
+
     gROOT.ProcessLine (".x $ROOTCOREDIR/scripts/load_packages.C");  
     output_file_name = parse_file_name(file_name)
     treeName = "CollectionTree" # default when making transient tree anyway
@@ -218,14 +222,17 @@ def traverse_daods(file_name):
     h_z_prime_phi = ROOT.TH1F('h_z_prime_phi','Phi distribution of Z prime',n_bins_phi,phi_range[0],phi_range[1])
     h_z_prime_phi.GetXaxis().SetTitle("Phi [rad]") 
 
+    h_top_match =  ROOT.TH1F('delta_r_top_jet','Delta R between truth top quark and jet',n_bins_phi,0,2*math.pi)
+    h_delta_r.GetXaxis().SetTitle("Delta R") 
+
     l.info( "Number of input events: %s" % t.GetEntries())
     
     # Loop over all events
-    for entry in xrange(t.GetEntries()): #2000):#
+    for entry in xrange(4000):#t.GetEntries()): #2000):#
       t.GetEntry(entry)
       l.debug( " ################ Run #%i, Event #%i ###########################" % ( t.EventInfo.runNumber(), t.EventInfo.eventNumber() ) )
       l.debug( "Number of jets: %i" %  t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size() )
-      if(entry % 1000 == 0 and entry != 0):
+      if(entry % 100 == 0 and entry != 0):
         l.info("Processing event: "+str(entry))
       
       # Extract the truth particles from the list 
@@ -298,7 +305,7 @@ def traverse_daods(file_name):
         if(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i).pt()>=150e3 and abs(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i).eta())< 2.7):
           valid_jets += 1
           jet = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i) 
-        if(fill_histograms):
+
           if(fill_histograms):
             if (i<=5):
                 h_jet_frac_i[i].Fill(jet.pt()/total_jet_pt) 
@@ -310,15 +317,17 @@ def traverse_daods(file_name):
             h_jet_phi.Fill(jet.phi())
             h_jet_eta.Fill(jet.eta())
           l_jet.info("Jet "+str(i)+"-------------------------------------")
-          l_jet.info(debug_string_particle(jet))
+          l_jet.info(debug_string(jet))
           matches_top = False
-          matches_top = delta_r_match(truth_top_p4, jet.p4(), 0.4)
+          matches_top = delta_r_match(top.p4(), jet.p4(), 0.4)
           if (matches_top):
             l_jet.debug("Jet "+str(i)+" matches top")
+          h_top_match.Fill(top.p4().DeltaR(jet.p4()))
           matches_anti_top = False
-          matches_anti_top = delta_r_match(truth_anti_top_p4, jet.p4(), 0.4)
+          matches_anti_top = delta_r_match(anti_top.p4(), jet.p4(), 0.4)
           if(matches_anti_top):
             l_jet.debug("Jet "+str(i)+" matches anti-top")
+          #h_top_match.Fill(anti_top.p4().DeltaR(jet.p4()))
           topos = jet.getConstituents()
           #weights = jet.getConstituentWeights()
           #print(weights)
@@ -338,10 +347,10 @@ def traverse_daods(file_name):
               # loop over topoclusters
               for index in xrange(len(topos)):
                     topo = topos[index]# #topos[index] topos.at(index)#
-                    l_jet_sub.info(debug_string_particle(topo))
+                    l_jet_sub.info(debug_string(topo))
                     l_jet_sub.debug(dir(topo))
                     raw_cluster = topo.rawConstituent()
-                    l_jet_sub.debug( "Raw Cluster: "+debug_string_particle(raw_cluster))    
+                    l_jet_sub.debug( "Raw Cluster: "+debug_string(raw_cluster))    
                     l_jet_sub.debug(dir(raw_cluster))
                     if(fill_histograms):
                       h_calo_towers.Fill(topo.eta()-jet.eta(), topo.phi()-jet.phi(),topo.pt())# for i in xrange(5)] # before transformations
