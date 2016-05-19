@@ -380,17 +380,25 @@ def traverse_daods(file_name):
      '''
       # Loop over all jets in an event
       valid_jets = 0
-      '''
-      first_jet = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(0)
-      closest_match_to_top = calculate_delta_r_from_particle(top,first_jet)
-      closest_match_to_anti_top = calculate_delta_r_from_particle(anti_top,first_jet)
-      jet_top_match = 0
-      jet_anti_top_match = 0
-      '''
+      first_jet = None
+      closest_match_to_top = 0
+      closest_match_to_anti_top = 0
+      jet_top_match = None
+      jet_anti_top_match = None
+      
       for i in xrange(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.size()):
         if(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i).pt()>=150e3 and abs(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i).eta())< 2.7):
           valid_jets += 1
+
           jet = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i) 
+          l_jet.info("Jet "+str(i)+"-------------------------------------")
+          l_jet.info(debug_string(jet))
+          
+          if(valid_jets == 1):
+            first_jet = t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets.at(i)
+            closest_match_to_top = calculate_delta_r_from_particle(top,first_jet)
+            closest_match_to_anti_top = calculate_delta_r_from_particle(anti_top,first_jet)
+
           '''
           if(fill_histograms):
             if (i<=5):
@@ -404,41 +412,46 @@ def traverse_daods(file_name):
             h_jet_eta.Fill(jet.eta())
           '''
           match_to_top = calculate_delta_r_from_particle(top,jet)
-          if(match_to_top<closest_match_to_top):
+          if(match_to_top<=closest_match_to_top):
               closest_match_to_top = match_to_top 
-              jet_top_match = i
+              jet_top_match = jet
+
 
           match_to_anti_top = calculate_delta_r_from_particle(anti_top,jet)
-          if(match_to_anti_top<closest_match_to_anti_top):
+          if(match_to_anti_top<=closest_match_to_anti_top):
               closest_match_to_anti_top = match_to_anti_top 
-              jet_anti_top_match = i
-
-          l_jet.info("Jet "+str(i)+"-------------------------------------")
-          l_jet.info(debug_string(jet))
+              jet_anti_top_match = jet
+      if(jet_top_match):
+          l_truth.debug("top, closest jet delta r: "+str(match_to_top))
+          l_truth.debug("top pt: "+str(top.pt()))
+          l_truth.debug("jet pt: "+str(jet_top_match.pt()))   
           matches_top = False
-          matches_top = delta_r_match(top.p4(), jet.p4(), 0.4)
+          matches_top = delta_r_match(top.p4(), jet_top_match.p4(), 0.4)
           if (matches_top and top and W_plus and b_minus):
-              l_jet.debug("Jet "+str(i)+" matches top")
-              h_delta_r_jet_b_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(b_minus,jet),1)
-              h_delta_r_jet_W_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(W_plus,jet),1)
+              h_delta_r_jet_b_2d.Fill(jet_top_match.pt()/GeV,calculate_delta_r_from_particle(b_minus,jet_top_match),1)
+              h_delta_r_jet_W_2d.Fill(jet_top_match.pt()/GeV,calculate_delta_r_from_particle(W_plus,jet_top_match),1)
               l_truth.debug("top delta r:")
-              l_truth.debug("jet p4:"+str(jet.p4()))
+              l_truth.debug("jet p4:"+str(jet_top_match.p4()))
               l_truth.debug("W child:"+str(W_plus.child(0)))
-              [l_truth.debug(calculate_delta_r_from_particle(q,jet)) for q in w_daughters(W_plus)]
-              [h_delta_r_jet_W_daughters_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(q,jet),1) for q in w_daughters(W_plus)]
+              [l_truth.debug(calculate_delta_r_from_particle(q,jet_top_match)) for q in w_daughters(W_plus)]
+              [h_delta_r_jet_W_daughters_2d.Fill(jet_top_match.pt()/GeV,calculate_delta_r_from_particle(q,jet_top_match),1) for q in w_daughters(W_plus)]
             
-          h_top_match.Fill(top.p4().DeltaR(jet.p4()))
-          matches_anti_top = False
-          matches_anti_top = delta_r_match(anti_top.p4(), jet.p4(), 0.4)
-          if(matches_anti_top and anti_top and W_minus and b_plus):
-            l_jet.debug("Jet "+str(i)+" matches anti-top")
-            h_delta_r_jet_b_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(b_plus,jet),1)
-            h_delta_r_jet_W_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(W_minus,jet),1)
-            l_truth.debug("anti-top delta r:")
-            l_truth.debug("jet p4:"+str(jet.p4()))
-            [l_truth.debug(calculate_delta_r_from_particle(q,jet)) for q in w_daughters(W_minus)]
-            [h_delta_r_jet_W_daughters_2d.Fill(jet.pt()/GeV,calculate_delta_r_from_particle(q,jet),1) for q in w_daughters(W_minus)]
 
+
+      if(jet_anti_top_match):     
+          l_truth.debug("anti-top, closest jet delta r:"+str(match_to_anti_top))
+          l_truth.debug("anti-top pt: "+str(anti_top.pt()))
+          l_truth.debug("jet pt: "+str(jet_anti_top_match.pt())) 
+          matches_anti_top = False
+          matches_anti_top = delta_r_match(anti_top.p4(), jet_anti_top_match.p4(), 0.4)
+          if(matches_anti_top and anti_top and W_minus and b_plus):
+              h_delta_r_jet_b_2d.Fill(jet_anti_top_match.pt()/GeV,calculate_delta_r_from_particle(b_plus,jet_anti_top_match),1)
+              h_delta_r_jet_W_2d.Fill(jet_anti_top_match.pt()/GeV,calculate_delta_r_from_particle(W_minus,jet_anti_top_match),1)
+              l_truth.debug("anti-top delta r:")
+              l_truth.debug("jet p4:"+str(jet_anti_top_match.p4()))
+              [l_truth.debug(calculate_delta_r_from_particle(q,jet_anti_top_match)) for q in w_daughters(W_minus)]
+              [h_delta_r_jet_W_daughters_2d.Fill(jet_anti_top_match.pt()/GeV,calculate_delta_r_from_particle(q,jet_anti_top_match),1) for q in w_daughters(W_minus)]
+    
           '''
           topos = jet.getConstituents()
 
