@@ -1,0 +1,19 @@
+#!/bin/sh
+#PBS -N skeleton
+#PBS -l mem=4gb
+#PBS -l procs=1
+#PBS -j oe
+#PBS -r n
+#PBS -V
+ 
+mkdir /tmp/${PBS_JOBID}
+cd /tmp/${PBS_JOBID}
+cp --parents $input1 .
+cp ~/top_tagging/xAOD_traversal/skeleton.py .
+cp ~/top_tagging/xAOD_traversal/pdg_dictionary.py .
+echo "Current working directory is `pwd`" 
+echo "Starting run at: `date`"
+python skeleton.py $input1 
+cp /tmp/${PBS_JOBID}/*.root ~/top_tagging/xAOD_traversal/outputs
+/bin/rm -rf /tmp/${PBS_JOBID}
+
