@@ -237,7 +237,7 @@ def init_jet_top_histograms():
     h_delta_pt_delta_r.GetZaxis().SetTitle(" Events  ")
 
     global h_jet_pt_cut
-    h_jet_pt_cut = ROOT.TH1F('h_jet_pt_cut','Transverse momentum of jets passing selection',100,0,2500)
+    h_jet_pt_cut = ROOT.TH1F('h_jet_pt_cut','Transverse momentum of jets passing selection',500,0,5000)
     h_jet_pt_cut.GetXaxis().SetTitle("p_T [GeV]")
 
 def process_events(file_name):

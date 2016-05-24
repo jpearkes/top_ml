@@ -23,7 +23,8 @@ def run_batches(signal):
         #files = glob.glob("/data/wfedorko/mc15_13TeV.301333.Pythia8EvtGen_A14NNPDF23LO_zprime3000*/DAOD_EXOT7.*.pool.root.1")
         #files = glob.glob("/data/wfedorko/mc15_13TeV.301329.Pythia8EvtGen_A14NNPDF23LO_zprime2000*/DAOD_EXOT7.*.pool.root.1")
         #files = glob.glob("/data/wfedorko/mc15_13TeV.301325.Pythia8EvtGen_A14NNPDF23LO_zprime1000*/DAOD_EXOT7.*.pool.root.1")
-        files = glob.glob("/data/wfedorko/mc15_13TeV.301334.Pythia8EvtGen_A14NNPDF23LO_zprime4000*/DAOD_EXOT7.*.pool.root.1")
+        #files = glob.glob("/data/wfedorko/mc15_13TeV.301334.Pythia8EvtGen_A14NNPDF23LO_zprime4000*/DAOD_EXOT7.*.pool.root.1")
+        files = glob.glob("/data/wfedorko/mc15_13TeV.*zprime*/DAOD_EXOT7*.pool.root.1")
         #/hep300/data/jpearkes/ZvvH125_bb/mc15_13TeV.341101.Pythia8EvtGen_A14NNPDF23LO_ZvvH125_bb.merge.AOD.e3885_s2608_s2183_r6630_r6264_tid05539891_00/AOD.05539891._0000[6-9][0-9].pool.root.1")
     else:
         files =  glob.glob("/data/wfedorko/mc15_13TeV.*.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ6W.merge.DAOD_EXOT7*/DAOD_EXOT7.*.pool.root.1")
@@ -38,8 +39,10 @@ def run_batches(signal):
         print(talk)
         subprocess.call(talk, shell = True)
         time.sleep(0.1)
-        if(i%2 ==0):
-           time.sleep(60)
+        if(i%30 ==0):
+            time.sleep(60)
+        if(i%100 ==0):
+            time.sleep(300)
         i+=1
     print "talking complete" 
 

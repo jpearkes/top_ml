@@ -9,11 +9,11 @@
 mkdir /tmp/${PBS_JOBID}
 cd /tmp/${PBS_JOBID}
 cp --parents $input1 .
-cp ~/top_tagging/xAOD_traversal/skeleton.py .
-cp ~/top_tagging/xAOD_traversal/pdg_dictionary.py .
+cp -r ~/top_tagging/top_ml .
+cp ~/top_tagging/run_top_ml.py .
 echo "Current working directory is `pwd`" 
 echo "Starting run at: `date`"
-python skeleton.py $input1 
-cp /tmp/${PBS_JOBID}/*.root ~/top_tagging/xAOD_traversal/outputs
+python run_top_ml.py $input1 
+cp /tmp/${PBS_JOBID}/*.root ~/top_tagging/outputs
 /bin/rm -rf /tmp/${PBS_JOBID}
 
