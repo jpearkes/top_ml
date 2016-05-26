@@ -4,26 +4,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import time 
 import logging
+import math
 
 
-#x = np.load("master_numpy_array.npz")
-print("loading array")
-start = time.time()
 
-x = np.load("../outputs/zprime400_000001jet_inv_mass.npz")
-#x = np.load("master_zprime_array.npz")
-y = x['data']
-#y = x['arr_0']
-#y = y[0:5,:]
-print("done loading")
-end = time.time()
-print("time elapsed"+str(end - start))
-
-print(y.shape)
-rows,cols = y.shape
-max_count = 87000 #87000
-
-# pt bins 
 class bin:
     """Bin checker """
     count = 0 
@@ -50,139 +34,120 @@ class bin:
             self.full = True
             return True 
     def print_object(self):
-        print("["+str(self.start)+","+str(self.stop)+")")
-        print("Count:"+str(self.count))
-        print("Full? "+str(self.full))
-n_bins = 10
-lst = [bin(i*100,i*100+100) for i in range(n_bins)]
-new_array = np.zeros((1,2))
-new_array_list = []
-#print(new_array)
+        logging.debug("["+str(self.start)+","+str(self.stop)+")")
+        logging.debug("Count:"+str(self.count))
+        logging.debug("Full? "+str(self.full))
 
-for row in xrange(rows):
-    #print(y[row][0][0])
-    if row == 0:
-        #print(y[row])
-        #new_array = y[row]
-        new_array_list.append(y[row])
-        #print("----------------------------------")
-        #print(new_array)
-        [lst[i].in_bin(y[0][0][0]) for i in range(n_bins)]
-    else:
-        for i in range(n_bins):
-            if(lst[i].in_bin(y[row][0][0]) and not lst[i].full):
-                #print(y[row])
-                #new_array = np.vstack((new_array,y[row])) # this works but is slow for large arrays
-                #new_array = np.append(new_array, y[row],axis=2)
-                #np.insert(new_array, 0,y[row], axis=1)
-                new_array_list.append(y[row])
 
-                #print("----------------------------------")
-        if(row%1000000 == 0):
-            print(row)
-end = time.time()
-print("time elapsed running through rows"+str(end - start))
-new_array = np.vstack(new_array_list)
-end = time.time()
-print("time elapsed stacking"+str(end - start))
-#print("new array:")
-#print(new_array)
-print("new array shape:")
-print(new_array.shape)
+def make_histogram(dist, name, x_min, x_max, bin_width, title, x_label):
+    plt.cla()
+    plt.figure()
+    #print([new_array[i][0][0] for i in range(rows)])
+    p = plt.hist( dist,
+                  #range=[min_x_calc,max_x_calc],
+                  bins = np.arange(x_min, x_max + bin_width, bin_width),
+                  #weights = [real_background[:,-2],real_signal[:,-2]],
+                  label = ['signal'],
+                  linewidth = 0.0, 
+                  edgecolor = None,
+                  #histtype = 'barstacked',
+                  color = 'blue',
+                  alpha = 0.5 )
+    plt.legend(loc=1,prop={'size':12})
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel("Events")
+    x1,x2,y1,y2 = plt.axis()
+    plt.axis((x_min,x_max,y1,y2+5)) 
+    logging.info("Saving figure as "+"../plots/"+name+".png") 
+    plt.savefig("../plots/"+name+".png")
+    return
+ 
+def make_pt_histogram(dist):
+    x_min = 0 
+    x_max = 2500
+    bin_width = 10
+    title = "Distribution of transverse momentum for jets passing selection"
+    name = "pt"
+    x_label = "p_T [GeV]"
+    make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
+    return 
 
-rows,cols = new_array.shape
-#for row in xrange(rows):
-#    print(new_array[row][0][0])
+def make_eta_histogram(dist):
+    x_min = -3
+    x_max = 3
+    bin_width = 0.1
+    title = "Eta distribution for jets passing selection"
+    name = "eta"
+    x_label = "Eta"
+    make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
+    return 
 
-[lst[i].print_object() for i in range(n_bins)]
+def make_phi_histogram(dist):
+    x_min = -math.pi
+    x_max = math.pi
+    bin_width = 0.1
+    title = "Phi distribution for jets passing selection"
+    name = "phi"
+    x_label = "Phi [rad]"
+    make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
+    return 
 
-# Make font size small
-#mpl.rcParams.update({'font.size': 8})
+def plot_jet_histograms(dist):
+    rows,cols = dist.shape
+    make_pt_histogram([dist[i][0][0] for i in range(rows)])
+    make_eta_histogram([dist[i][0][1] for i in range(rows)])
+    make_phi_histogram([dist[i][0][2] for i in range(rows)])
+    return 
 
-# for col in range(0,30):
-#     [value, wrong_value] = split (data, data[:,col]!=-999.0)
-#     print "Number of -999s = "+str(wrong_value.size)
-#     [real_signal, real_background] = split(value, value[:,-1] == 1.0)
-#     print "real_background weights"
-#     print real_background[:,-2]
-#     print "real_signal weights"
-#     print real_signal[:,-2]
-#     if (int(col%6) == 0):
-#         plt.cla()
-#         plt.figure(figure_num)
-#         figure_num += 1 
-
-#print([new_array[i][0][0] for i in range(rows)])
-min_x_calc = 0
-max_x_calc = 1000
-binwidth = (max_x_calc - min_x_calc) / n_bins
-print "min_x_calc: " + str(min_x_calc)
-print "max_x_calc: " + str(max_x_calc)
-print "binwidth: "+ str(binwidth)
-plt.plot()
-p1 = plt.hist([new_array[i][0][0] for i in range(rows)],
-              #range=[min_x_calc,max_x_calc],
-              bins = np.arange(min_x_calc, max_x_calc + binwidth, binwidth),
-              #weights = [real_background[:,-2],real_signal[:,-2]],
-              label = ['signal'],
-              linewidth = 0.0, 
-              edgecolor = None,
-              #histtype = 'barstacked',
-              color = 'blue',
-              alpha = 0.5 )
-              
-plt.legend(loc=1,prop={'size':6})
-#plt.title(header[col+1])
-plt.xlabel("Value")
-plt.ylabel("Counts/Bin")
-
-x1,x2,y1,y2 = plt.axis()
-plt.axis((x1,x2,y1,y2+10))
-#plt.text(0.0, 500, 'Number of invalid points:'+str(m-count[col]), fontsize=6)
-
-# eta
-plt.savefig("../plots/test"+".png")
-plt.cla()
-plt.figure(1)
-#print([new_array[i][0][0] for i in range(rows)])
-min_x_calc = -3
-max_x_calc = 3
-binwidth = 0.1
-n_bins = (max_x_calc - min_x_calc) / binwidth
-
-print "min_x_calc: " + str(min_x_calc)
-print "max_x_calc: " + str(max_x_calc)
-print "binwidth: "+ str(binwidth)
-plt.plot()
-p1 = plt.hist([new_array[i][0][1] for i in range(rows)],
-              #range=[min_x_calc,max_x_calc],
-              bins = np.arange(min_x_calc, max_x_calc + binwidth, binwidth),
-              #weights = [real_background[:,-2],real_signal[:,-2]],
-              label = ['signal'],
-              linewidth = 0.0, 
-              edgecolor = None,
-              #histtype = 'barstacked',
-              color = 'blue',
-              alpha = 0.5 )
-              
-plt.legend(loc=1,prop={'size':12})
-#plt.title(header[col+1])
-plt.xlabel("Value")
-plt.ylabel("Events")
-
-x1,x2,y1,y2 = plt.axis()
-plt.axis((min_x_calc,max_x_calc,y1,y2+5))
-#plt.text(0.0, 500, 'Number of invalid points:'+str(m-count[col]), fontsize=6)
-
-plt.savefig("../plots/test2"+".png")
-
-plt.show()
-'''
-def load_data():
+def get_flat_distribution(y):
     start = time.time()
+    logging.debug(y.shape)
+    rows,cols = y.shape
+    x_min = 0 
+    x_max = 2500
+    bin_width = 100
+    n_bins = int((x_max-x_min)/bin_width)
+    lst = [bin(i,i+bin_width) for i in np.arange(x_min,x_max,bin_width)]
+    new_array = np.zeros((1,2))
+    new_array_list = []
+
+    for row in xrange(rows):
+        if row == 0:
+            new_array_list.append(y[row])
+            [lst[i].in_bin(y[0][0][0]) for i in range(n_bins)]
+        else:
+            for i in range(n_bins):
+                if(lst[i].in_bin(y[row][0][0]) and not lst[i].full):
+                    new_array_list.append(y[row])
+            if(row%1000000 == 0):
+                logging.debug(row)
+    stop = time.time()
+    logging.debug("time elapsed running through rows"+str(stop - start))
+    new_array = np.vstack(new_array_list)
+    stop = time.time()
+    logging.debug("time elapsed stacking"+str(stop - start))
+    logging.debug("new array shape:")
+    logging.debug(new_array.shape)
     
+    rows,cols = new_array.shape
+    [lst[i].print_object() for i in range(n_bins)]
+    np.savez(file_name+"flat", new_array)
+    return new_array
+
+def load_data(file_name):
+    start = time.time()
+    logging.debug("loading array")
+    x = np.load(file_name)
+    #y = x['data']
+
+    y = x['arr_0']
+    #y = y[0:5,:] # mini array for testing
+
+    logging.debug("done loading")
     stop = time.time()
     logging.debug("Time for loading:"+str(stop-start))
+    return y
 
 if __name__ == '__main__':
     # Setup logging
@@ -190,17 +155,13 @@ if __name__ == '__main__':
                         format='%(levelname)s - %(message)s')  
     
     file_name = "master_zprime_array.npz"
-    #x = np.load("../outputs/zprime400_000001jet_inv_mass.npz")
-    load_data()
-    
+    max_count = 16000 #87000 #################
+    #file_name = "../outputs/zprime400_000001jet_inv_mass.npz"
+    flat_distribution = get_flat_distribution(load_data(file_name))
+    plot_jet_histograms(flat_distribution)
 
-    # load data
-    # get flat pt distribution
-    # maybe plot pt distribution to check flatness
-    # save data with flat pt distribution 
-    # plot eta and phi distributions
 
-'''
+
 
 
 
