@@ -11,9 +11,11 @@ cd /tmp/${PBS_JOBID}
 cp --parents $input1 .
 cp -r ~/top_tagging/top_ml .
 cp ~/top_tagging/run_top_ml.py .
+mkdir outputs
 echo "Current working directory is `pwd`" 
 echo "Starting run at: `date`"
 python run_top_ml.py $input1 
-cp /tmp/${PBS_JOBID}/*.root ~/top_tagging/outputs
+cp /tmp/${PBS_JOBID}/outputs/*.root ~/top_tagging/outputs
+cp /tmp/${PBS_JOBID}/outputs/*.npz ~/top_tagging/outputs
 /bin/rm -rf /tmp/${PBS_JOBID}
 

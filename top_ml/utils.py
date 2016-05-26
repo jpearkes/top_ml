@@ -21,7 +21,7 @@ def parse_file_name(file_name):
      output_file_name = "dijet"+jzxw.group(1)
   elif(zprimexxx):
      output_file_name = zprimexxx.group(1)
-  output_file_name = output_file_name+"_"+daod_num.group(1)+"jet_inv_mass.root"
+  output_file_name = "outputs/"+output_file_name+"_"+daod_num.group(1)+"jet_inv_mass.root"
   logging.info("Output file:"+output_file_name)
   return output_file_name
 
