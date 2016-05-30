@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import time 
 import logging
 import math
+from matplotlib.colors import LogNorm
 
 
 
@@ -58,46 +59,70 @@ def make_histogram(dist, name, x_min, x_max, bin_width, title, x_label):
     plt.xlabel(x_label)
     plt.ylabel("Events")
     x1,x2,y1,y2 = plt.axis()
-    plt.axis((x_min,x_max,y1,y2+5)) 
+    plt.axis((x_min,x_max,y1,y2+y2*0.05)) 
     logging.info("Saving figure as "+"../plots/"+name+".png") 
     plt.savefig("../plots/"+name+".png")
     return
  
-def make_pt_histogram(dist):
+def make_pt_histogram(dist,name):
     x_min = 0 
     x_max = 2500
     bin_width = 10
     title = "Distribution of transverse momentum for jets passing selection"
-    name = "pt"
+    name = name+"pt"
     x_label = "p_T [GeV]"
     make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
     return 
 
-def make_eta_histogram(dist):
+def make_pt_histogram2(dist,name):
+    x_min = 0 
+    x_max = 2500
+    bin_width = 100
+    title = "Distribution of transverse momentum for jets passing selection"
+    name = name+"pt2"
+    x_label = "p_T [GeV]"
+    make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
+    return 
+
+def make_eta_histogram(dist,name):
     x_min = -3
     x_max = 3
     bin_width = 0.1
     title = "Eta distribution for jets passing selection"
-    name = "eta"
+    name = name+"eta"
     x_label = "Eta"
     make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
     return 
 
-def make_phi_histogram(dist):
-    x_min = -math.pi
-    x_max = math.pi
-    bin_width = 0.1
+def make_phi_histogram(dist,name):
+    x_min = -int(math.pi)
+    x_max = int(math.pi)
+    bin_width = 0.05
     title = "Phi distribution for jets passing selection"
-    name = "phi"
+    name = name+"phi"
     x_label = "Phi [rad]"
     make_histogram(dist, name, x_min, x_max, bin_width, title, x_label)
     return 
 
-def plot_jet_histograms(dist):
+def make_eta_phi_histogram(eta,phi,name):
+    plt.cla()
+    plt.figure()
+    plt.hist2d(phi,eta, bins=62, norm=LogNorm())
+    plt.colorbar()
+    plt.title("Eta phi distribution of background jets")
+    plt.xlabel("Phi")
+    plt.ylabel("Eta")
+    logging.info("Saving figure as "+"../plots/"+name+"eta_phi.png") 
+    plt.savefig("../plots/"+name+"eta_phi.png")
+
+def plot_jet_histograms(dist, name):
     rows,cols = dist.shape
-    make_pt_histogram([dist[i][0][0] for i in range(rows)])
-    make_eta_histogram([dist[i][0][1] for i in range(rows)])
-    make_phi_histogram([dist[i][0][2] for i in range(rows)])
+    make_pt_histogram([dist[i][0][0] for i in range(rows)],name)
+    make_pt_histogram2([dist[i][0][0] for i in range(rows)],name)
+    make_eta_histogram([dist[i][0][1] for i in range(rows)],name)
+    make_phi_histogram([dist[i][0][2] for i in range(rows)],name)
+    make_eta_phi_histogram([dist[i][0][1] for i in range(rows)],
+                           [dist[i][0][2] for i in range(rows)],name)
     return 
 
 def get_flat_distribution(y):
@@ -112,7 +137,7 @@ def get_flat_distribution(y):
     new_array = np.zeros((1,2))
     new_array_list = []
 
-    for row in xrange(rows):
+    for row in range(rows):
         if row == 0:
             new_array_list.append(y[row])
             [lst[i].in_bin(y[0][0][0]) for i in range(n_bins)]
@@ -154,11 +179,14 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)s - %(message)s')  
     
-    file_name = "master_zprime_array.npz"
+    #file_name = "master_zprime_array.npz"
+    #file_name = "master_jetjet_array.npz"
+    #file_name = "test_dijet_array2.npz"
+    file_name = "../outputs/dijetJZ8W_000006jet_inv_mass.npz"
     max_count = 16000 #87000 #################
     #file_name = "../outputs/zprime400_000001jet_inv_mass.npz"
     flat_distribution = get_flat_distribution(load_data(file_name))
-    plot_jet_histograms(flat_distribution)
+    plot_jet_histograms(flat_distribution,"main")
 
 
 
