@@ -7,6 +7,7 @@ from ROOT import gROOT
 from pdg_dictionary import pdgid_to_name
 import numpy as np
 from pprint import pprint
+import pdb
 
 
 def debug_string_particle(truth):       
@@ -138,13 +139,15 @@ def top_jet_loop(jets, top, anti_top):
     smallest_delta_r_to_anti_top = 100
     delta_r_to_top = 100
     delta_r_to_anti_top = 100
-    max_delta_r = 0.4
+    max_delta_r = 0.75
+    max_eta = 2.0
 
     for i in xrange(jets.size()):
         #
-        if(jets.at(i).pt()>=150e3 and abs(jets.at(i).eta())< 2.7): # this cut is made in the xAOD derivation 
+        if(jets.at(i).pt()> 150e3 and abs(jets.at(i).eta())< 2.0): # pt cut is made in the xAOD derivation, we are making 2.0 eta cut 
 
             jet = jets.at(i) 
+
             l_jet.info("Jet "+str(i)+"-------------------------------------")
             l_jet.info(debug_string(jet))
 
@@ -166,6 +169,12 @@ def top_jet_loop(jets, top, anti_top):
                 smallest_delta_r_to_anti_top = delta_r_to_anti_top
                 l_jet.debug("Smallest delta r to antitop: "+str(smallest_delta_r_to_anti_top))
                 anti_top_jet = jet
+            if(i == 0):
+                h_first_jet_mass.Fill(jet.m()/GeV) 
+            elif i==1:
+                h_second_jet_mass.Fill(jet.m()/GeV)
+            else:
+                h_other_jet_mass.Fill(jet.m()/GeV)
 
     # set jets to None if do not match
     if (smallest_delta_r_to_top > max_delta_r):
@@ -203,7 +212,16 @@ def event_display(top, anti_top, top_jet, anti_top_jet):
     return 
 
 def create_vector(jet):
-    x_jet = [jet.pt()/GeV, jet.eta(), jet.phi()]#[np.array([[jet.pt()/GeV, jet.eta(), jet.phi()]])]
+    print("Subjets")
+    print(jet.getAttribute("NTrimSubjets"))
+    # print("Dip12")
+    # print(jet.getAttribute("Dip12"))
+    # print("Tau_2")
+    # print(jet.getAttribute("Tau2_wta"))
+    # print("Split23")
+    # print(jet.getAttribute("Split23"))
+    x_jet = np.array([jet.m(),jet.pt()/GeV, jet.eta(), jet.phi()])#[np.array([[jet.pt()/GeV, jet.eta(), jet.phi()]])]
+
     y_jet = None
     topos = jet.getConstituents()
 
@@ -211,29 +229,64 @@ def create_vector(jet):
     l_jet_sub.info("Size of topos: "+str(topos.size())+", Valid? "+str(topos.isValid())) #roughly half of these are invalid
     if(topos.isValid()):
         #print len(topos)
+        energy = 0
+        momentum = 0
         topos = sort_topos(topos)
-        y_jet = [None]*len(topos)#np.zeros((len(topos),3))
+        jet_mass = None
+        y_jet = np.zeros((len(topos),3))#[None]*len(topos)#np.zeros((len(topos),3))
         for index in xrange(len(topos)):
             topo = topos[index]# #topos[index] topos.at(index)#
-            y_jet[index] = [topo.pt()/GeV,topo.eta(), topo.phi()]
+            y_jet[index] = np.array([topo.pt()/GeV,topo.eta(), topo.phi()])
+            #energy = energy+topo.e()
+            #momentum = momentum+math.sqrt(topo.px()**2+topo.py()**2+topo.pz()**2)
+            rawCluster = topo.rawConstituent()
+            #print("raw")
+            #print(rawCluster.p4())
+            if index == 0:
+                jet_mass = rawCluster.p4()
+            else:
+                jet_mass = jet_mass + rawCluster.p4()
+            #print("topo")
+            #print(topo.p4())
             #h_calo_towers_jet_constit[ry].Fill(topo.eta(), topo.phi(),topo.pt()/GeV)
-    #y_jet = [[jet_constit.pt(),jet_conentstit.eta(), jet_constit.phi() for i in top_jet.size()]]
-    z_jet = [x_jet,y_jet]#.append(y_jet)
-    #pprint(z_jet)
-    return z_jet
+        #y_jet = [[jet_constit.pt(),jet_conentstit.eta(), jet_constit.phi() for i in top_jet.size()]]
+        h_jet_mass.Fill(jet.m()/GeV)
+
+        h_jet_mass_from_raw.Fill(jet_mass.M()/GeV)
+        if (jet.pt()>=650e3 and jet.pt()< 1800e3):
+            h_jet_mass_after_pt_cut.Fill(jet.m()/GeV)
+            if jet.m()> 100e3:
+                h_jet_mass_after_pt_and_m_cuts.Fill(jet.m()/GeV)
+        h_jet_mass_pt.Fill(jet.pt()/GeV, jet.m()/GeV)
+        # if jet_mass<= 0.0:
+        #     print ("jet_mass"+str(jet_mass.M()/GeV))
+        #     print("num constituents "+str(len(topos)))
+        #     print("jet pt "+str(jet.pt()))
+    if(y_jet != None):
+        #print(x_jet)  
+        #print(y_jet) 
+        #print(x_jet.shape)
+        #print(y_jet.shape)
+        z_jet = np.hstack((x_jet,np.ravel(y_jet)))#.append(y_jet) something
+        #pprint(z_jet)
+        #print(np.ravel(z_jet))
+        return np.ravel(z_jet)
+    else: 
+        return None
 
 def save_jet_constituents(top_jet,anti_top_jet):
-    top_vec =None
+    top_vec = None
     if(anti_top_jet and top_jet):
         top_vec = create_vector(top_jet), create_vector(anti_top_jet)
-    if(anti_top_jet):
+    if(anti_top_jet and not top_jet):
         top_vec = create_vector(anti_top_jet)
-    if(top_jet):
+    if(top_jet and not anti_top_jet):
         top_vec = create_vector(top_jet)  
     return top_vec
 
 def process_signal_event(truth_particles, jets):
     """ Extract the truth particles and then compare with the jets """
+    #pdb.set_trace()
     top = None
     anti_top = None
     top_jet = None
@@ -241,24 +294,30 @@ def process_signal_event(truth_particles, jets):
     event = None
     top, anti_top = truth_particle_loop(truth_particles)
     top_jet, anti_top_jet = top_jet_loop(jets, top, anti_top) 
-
     event = save_jet_constituents(top_jet, anti_top_jet)
-
     return event
 
+
 def process_background_event(jets):
-    vec = None
+    vec = []
+    new_vec = None
     for i in xrange(jets.size()):
-        if(jets.at(i).pt()>=150e3 and abs(jets.at(i).eta())< 2.7): # this cut is made in the xAOD derivation 
+        if(jets.at(i).pt()>=150e3 and abs(jets.at(i).eta())< 2.0): # pt cut is made in the xAOD derivation, we are making 2.0 eta cut 
             jet = jets.at(i)
             h_jet_pt_cut.Fill(jet.pt()/GeV)
             h_jet_eta_cut.Fill(jet.eta())
             h_jet_phi_cut.Fill(jet.phi())
             new_vec = create_vector(jet)
-            if(vec):
-                vec = vec, new_vec
+            if(i == 0):
+                h_first_jet_mass.Fill(jet.m()/GeV) 
+            elif i==1:
+                h_second_jet_mass.Fill(jet.m()/GeV)
             else:
-                vec = new_vec
+                h_other_jet_mass.Fill(jet.m()/GeV)
+            if(vec):
+                vec.append(new_vec)
+            else:
+                vec = [new_vec]
     return vec
 
 def init_jet_top_histograms():
@@ -289,7 +348,7 @@ def init_jet_top_histograms():
     global h_delta_pt_delta_r 
     h_delta_pt_delta_r  = ROOT.TH2F('h_delta_pt_delta_r','Delta Pt compared with Delta R',
     100,-2500,2500,
-    100,0,0.4)
+    100,0,0.75)
     h_delta_pt_delta_r.GetXaxis().SetTitle(" Delta Pt [GeV] ")
     h_delta_pt_delta_r.GetYaxis().SetTitle(" Delta R   ")
     h_delta_pt_delta_r.GetZaxis().SetTitle(" Events  ")
@@ -306,6 +365,41 @@ def init_jet_top_histograms():
     h_jet_phi_cut = ROOT.TH1F('h_jet_phi_cut','Phi distribution of jets passing selection',n_bins_phi,phi_range[0],phi_range[1])
     h_jet_phi_cut.GetXaxis().SetTitle("Phi [rad]") 
 
+    global h_jet_mass 
+    h_jet_mass  = ROOT.TH1F('h_jet_mass','Jet mass of jets passing selection',100,-1e-4,250)
+    h_jet_mass.GetXaxis().SetTitle("m [GeV]")    
+
+    global h_jet_mass_from_raw
+    h_jet_mass_from_raw  = ROOT.TH1F('h_jet_mass_from_raw','Jet mass of jets passing selection',100,-1e-4,250)
+    h_jet_mass_from_raw.GetXaxis().SetTitle("m [GeV]")  
+
+    global h_jet_mass_after_pt_cut
+    h_jet_mass_after_pt_cut  = ROOT.TH1F('h_jet_mass_after_pt_cut','Jet mass of jets passing pt cut',100,-1e-4,250)
+    h_jet_mass_after_pt_cut.GetXaxis().SetTitle("m [GeV]")  
+
+    global h_jet_mass_after_pt_and_m_cuts
+    h_jet_mass_after_pt_and_m_cuts = ROOT.TH1F('h_jet_mass_after_pt_and_m_cuts','Jet mass of jets passing pt and mass cut',100,-1e-4,250)
+    h_jet_mass_after_pt_and_m_cuts.GetXaxis().SetTitle("m [GeV]")     
+
+    global h_first_jet_mass
+    h_first_jet_mass = ROOT.TH1F('h_first_jet_mass','Jet mass of leading jet',100,-1e-4,250)
+    h_first_jet_mass.GetXaxis().SetTitle("m [GeV]")  
+
+    global h_second_jet_mass
+    h_second_jet_mass = ROOT.TH1F('h_second_jet_mass','Jet mass of second jets',100,-1e-4,250)
+    h_second_jet_mass.GetXaxis().SetTitle("m [GeV]")   
+
+    global h_other_jet_mass
+    h_other_jet_mass = ROOT.TH1F('h_other_jet_mass','Jet mass of other jets',100,-1e-4,250)
+    h_other_jet_mass.GetXaxis().SetTitle("m [GeV]")   
+
+    global h_jet_mass_pt 
+    h_jet_mass_pt   = ROOT.TH2F('h_jet_mass_pt','',
+    100,0,4000,
+    100,-1e-4,250)
+    h_jet_mass_pt.GetXaxis().SetTitle(" Jet p_t [GeV] ")
+    h_jet_mass_pt.GetYaxis().SetTitle(" Jet mass [GeV]   ")
+    h_jet_mass_pt.GetZaxis().SetTitle(" Jets ")
 
 def process_events(file_name):
     global GeV
@@ -323,6 +417,8 @@ def process_events(file_name):
     l_jet_sub.setLevel(logging.ERROR)
     #l_jet_sub.setLevel(logging.DEBUG)
     gROOT.ProcessLine(".x $ROOTCOREDIR/scripts/load_packages.C")
+    #gROOT.ProcessLine('#include "xAODCutFlow/CutBookkeeper.h"')
+
     output_file_name = parse_file_name(file_name)
 
     treeName = "CollectionTree"
@@ -333,25 +429,43 @@ def process_events(file_name):
     
     #Initialize histograms
     init_jet_top_histograms()
-    
+
     data = []
     # Loop over all events
     for entry in xrange(t.GetEntries()):
+        
         if entry % 100 == 0 and entry != 0:
             logging.info("Processing event: "+str(entry))
         event = None
         t.GetEntry(entry)
-        if ("zprime" in file_name):
+        
+        if ("_tt" in file_name):
             event = process_signal_event(t.TruthParticles,
                                  t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets)
-            if(event):
-                data.append(event)
+            
+            if(event != None):
+                if(type(event).__module__ == np.__name__):
+                    data.append(event)
+                else:
+                    data.append(event[0])
+                    data.append(event[1])
+
         elif("jetjet" in file_name):
             event = process_background_event(t.AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets)
             if(event):
-                data.append(event)
+                data.extend(event)
     np.savez_compressed(output_file_name.replace(".root",""), data=data)
     logging.info("Saved numpy array as: "+output_file_name.replace(".root",""))
+
+    num_jet_mass = h_jet_mass.Integral() 
+    num_jet_mass_after_pt_cut = h_jet_mass_after_pt_cut.Integral()  
+    num_jet_mass_after_pt_and_m_cuts = h_jet_mass_after_pt_and_m_cuts.Integral()
+    if(num_jet_mass!= 0):
+        pt_cut_efficiency = num_jet_mass_after_pt_cut/num_jet_mass
+        print("pt cut efficiency: "+str(pt_cut_efficiency))
+    if(num_jet_mass_after_pt_cut != 0):
+        pt_and_m_cut_efficiency = num_jet_mass_after_pt_and_m_cuts/num_jet_mass_after_pt_cut
+        print("pt and m cut efficiency:"+str(pt_and_m_cut_efficiency))
     #pprint(data)
     f_out.Write()
     f_out.Close()
