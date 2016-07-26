@@ -15,7 +15,9 @@ mkdir outputs
 echo "Current working directory is `pwd`" 
 echo "Starting run at: `date`"
 python run_top_ml.py $input1 
-cp /tmp/${PBS_JOBID}/outputs/*.root ~/top_tagging/outputs
-cp /tmp/${PBS_JOBID}/outputs/*.npz ~/top_tagging/outputs
+cp /tmp/${PBS_JOBID}/outputs/*.root /data/jpearkes/top_tagging/outputs
+cp /tmp/${PBS_JOBID}/outputs/*.npz /data/jpearkes/top_tagging/outputs
+cp /tmp/${PBS_JOBID}/outputs/*.png ~/top_tagging/plots
+cp /tmp/${PBS_JOBID}/outputs/*.pdf ~/top_tagging/plots
 /bin/rm -rf /tmp/${PBS_JOBID}
 
