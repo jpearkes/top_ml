@@ -196,7 +196,7 @@ def top_jet_loop(jets, top, anti_top):
     fill_jet_histograms(top, top_jet, smallest_delta_r_to_top,
                         anti_top, anti_top_jet, smallest_delta_r_to_anti_top)
     
-    print("top_jet"+str(top_jet)+", anti_top_jet"+str(anti_top_jet))
+    #print("top_jet"+str(top_jet)+", anti_top_jet"+str(anti_top_jet))
 
 
     return top_jet, anti_top_jet
@@ -594,8 +594,7 @@ def process_events(file_name):
     data = []
 
     # Loop over all events
-    #for entry in xrange(t.GetEntries()):
-    for entry in xrange(1000):
+    for entry in xrange(t.GetEntries()):
         t.GetEntry(entry)
 
         if entry % 100 == 0 and entry != 0:
