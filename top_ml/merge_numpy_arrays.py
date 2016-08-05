@@ -69,8 +69,8 @@ if __name__ == '__main__':
         for row in range(shape[0]):
             x_data[row][0] = np.array(x_data[row][0])
             x_data[row][1] = np.array(x_data[row][1])
-            x_data[row] = np.append(weight,x_data[row])
-    array_list.extend(x_data)
+            x_data[row] = np.insert(x_data[row], 0, weight)
+        array_list.extend(x_data)
 
     # -- Save merged arrays
     print("Saving arrays")
