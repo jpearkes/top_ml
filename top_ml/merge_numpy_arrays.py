@@ -8,7 +8,6 @@ from top_ml.dijet_weights import weights
 
 '''
 Merges numpy arrays of same type and applies weights
-
 Weights are stored in dijet_weights.py 
 '''
 
@@ -36,26 +35,7 @@ def get_weight(file_name):
                          +" matches no specification for weights \n"
                          +"Name must contain zprime, rsg, or JZ")
     return weight
-def merge_arrays(files,weights):
-    ''' Run over files, format and merge'''
-    i = 0
-    array_list = []
-    for file_name in files:
-        print("Loading " + file_name)
-        info = np.load(file_name,encoding='latin1')
-        weight = get_weight(file_name)
-        print(weight)
-        x_data = info['data']
-        i += 1
-        print("Array shape" + str(x_data.shape))
-        print(str(i)+"/"+str(len(files)))
-        shape = x_data.shape
-        for row in range(shape[0]):
-            x_data[row][0] = np.array(x_data[row][0])
-            x_data[row][1] = np.array(x_data[row][1])
-            x_data[row] = np.hstack((weight,x_data[row]))
-        array_list.extend(x_data)
-    return array_list
+
 
 if __name__ == '__main__':
     # -- Parse arguments
@@ -74,7 +54,23 @@ if __name__ == '__main__':
     print("Using weights found at: "+args.weights)
 
     # -- Start merging
-    array_list = merge_arrays(files, args.weights)
+    i = 0
+    array_list = []
+    for file_name in files:
+        print("Loading " + file_name)
+        info = np.load(file_name,encoding='latin1')
+        weight = get_weight(file_name)
+        print(weight)
+        x_data = info['data']
+        i += 1
+        print("Array shape" + str(x_data.shape))
+        print(str(i)+"/"+str(len(files)))
+        shape = x_data.shape
+        for row in range(shape[0]):
+            x_data[row][0] = np.array(x_data[row][0])
+            x_data[row][1] = np.array(x_data[row][1])
+            x_data[row] = np.append(weight,x_data[row])
+    array_list.extend(x_data)
 
     # -- Save merged arrays
     print("Saving arrays")
