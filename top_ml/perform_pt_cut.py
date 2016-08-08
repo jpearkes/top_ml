@@ -41,8 +41,8 @@ if __name__ == '__main__':
     # -- Perform pt cut
     rows = []
     for row in range(len(x_data)):
-        if (x_data[row][get_column_no['jet pt']] < args.low 
-            or x_data[row][get_column_no['jet pt']] > args.high):
+        if (x_data[row][get_column_no['jet pt']] > args.low 
+            and x_data[row][get_column_no['jet pt']] < args.high ):
                 rows.append(row)
     x_data = x_data[rows]
     print("Final array shape" + str(x_data.shape))
